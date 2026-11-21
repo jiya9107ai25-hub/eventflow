@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { AlertTriangle, CalendarPlus, CheckCircle2, Trash2 } from 'lucide-react';
@@ -33,8 +33,13 @@ export function SessionDialog({ open, onClose, event, rooms, speakers, sessions,
     formState: { errors, isSubmitting },
   } = useForm({ resolver: zodResolver(sessionSchema), defaultValues: blank });
 
+  // Once Save is pressed the new session already appears in `sessions` (local write),
+  // so stop the live preview — otherwise it clashes with its own saved copy.
+  const [saving, setSaving] = useState(false);
+
   useEffect(() => {
     if (!open) return;
+    setSaving(false);
     reset(
       editing
         ? {
@@ -56,7 +61,7 @@ export function SessionDialog({ open, onClose, event, rooms, speakers, sessions,
   const draft = watch();
   /** Live conflict preview for the session being edited. */
   const preview = useMemo(() => {
-    if (!draft.title || !draft.start || !draft.end) return [];
+    if (saving || !draft.title || !draft.start || !draft.end) return [];
     const id = editing?.id ?? '__draft__';
     const s = {
       id,
@@ -70,10 +75,16 @@ export function SessionDialog({ open, onClose, event, rooms, speakers, sessions,
       speakerIds: draft.speakerIds ?? [],
     };
     return detectConflicts([...sessions.filter((x) => x.id !== id), s], event, rooms, speakers).filter((c) => c.sessionIds.includes(id));
-  }, [draft.title, draft.start, draft.end, draft.day, draft.roomId, draft.speakerIds, draft.type, sessions, editing, event, rooms, speakers]);
+  }, [saving, draft.title, draft.start, draft.end, draft.day, draft.roomId, draft.speakerIds, draft.type, sessions, editing, event, rooms, speakers]);
 
   const submit = handleSubmit(async (v) => {
-    await onSave({ ...v, customType: v.type === 'other' ? v.customType : '', roomId: v.roomId || null }, editing?.id);
+    setSaving(true);
+    try {
+      await onSave({ ...v, customType: v.type === 'other' ? v.customType : '', roomId: v.roomId || null }, editing?.id);
+    } catch (err) {
+      setSaving(false);
+      throw err;
+    }
   });
 
   return (
