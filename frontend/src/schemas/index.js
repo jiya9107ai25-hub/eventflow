@@ -43,14 +43,16 @@ export const sessionSchema = z
   .object({
     title: z.string().trim().min(2, 'Session title required'),
     description: z.string().max(500).default(''),
-    type: z.enum(['keynote', 'talk', 'workshop', 'panel', 'break', 'judging']),
+    type: z.enum(['keynote', 'talk', 'workshop', 'panel', 'break', 'judging', 'other']),
+    customType: z.string().trim().max(40, 'Keep it under 40 characters').default(''),
     day: z.string().min(1, 'Pick a day'),
     start: time,
     end: time,
     roomId: z.string().nullable(),
     speakerIds: z.array(z.string()),
   })
-  .refine((v) => v.end > v.start, { path: ['end'], message: 'End time must be after start time' });
+  .refine((v) => v.end > v.start, { path: ['end'], message: 'End time must be after start time' })
+  .refine((v) => v.type !== 'other' || v.customType.length >= 2, { path: ['customType'], message: 'Type the session type, e.g. Registration' });
 
 export const taskSchema = z.object({
   title: z.string().trim().min(2, 'Task title required').max(120),

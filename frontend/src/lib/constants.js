@@ -61,7 +61,12 @@ export const SESSION_TYPE_META = {
   panel: { label: 'Panel', color: 'border-l-amber-500 bg-amber-500/10' },
   break: { label: 'Break', color: 'border-l-slate-400 bg-slate-500/10' },
   judging: { label: 'Judging', color: 'border-l-rose-500 bg-rose-500/10' },
+  other: { label: 'Other (type your own)', color: 'border-l-emerald-500 bg-emerald-500/10' },
 };
+
+/** Display label for a session's type — uses the custom text when type is "other". */
+export const sessionTypeLabel = (s) =>
+  s.type === 'other' ? s.customType?.trim() || 'Other' : (SESSION_TYPE_META[s.type] ?? SESSION_TYPE_META.other).label;
 
 /** Who an attendee is (stored as `ticketType`). Planning only — no check-in or attendance status. */
 export const TICKET_LABEL = {

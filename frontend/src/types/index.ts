@@ -82,7 +82,7 @@ export interface Speaker {
   bio: string;
 }
 
-export type SessionType = 'keynote' | 'talk' | 'workshop' | 'panel' | 'break' | 'judging';
+export type SessionType = 'keynote' | 'talk' | 'workshop' | 'panel' | 'break' | 'judging' | 'other';
 
 export interface Session {
   id: ID;

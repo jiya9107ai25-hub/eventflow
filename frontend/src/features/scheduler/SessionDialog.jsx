@@ -16,6 +16,7 @@ export function SessionDialog({ open, onClose, event, rooms, speakers, sessions,
     title: '',
     description: '',
     type: 'talk',
+    customType: '',
     day: days[0] ?? event.startDate,
     start: event.dailyStart,
     end: addHour(event.dailyStart),
@@ -40,6 +41,7 @@ export function SessionDialog({ open, onClose, event, rooms, speakers, sessions,
             title: editing.title,
             description: editing.description,
             type: editing.type,
+            customType: editing.customType ?? '',
             day: editing.day,
             start: editing.start,
             end: editing.end,
@@ -71,7 +73,7 @@ export function SessionDialog({ open, onClose, event, rooms, speakers, sessions,
   }, [draft.title, draft.start, draft.end, draft.day, draft.roomId, draft.speakerIds, draft.type, sessions, editing, event, rooms, speakers]);
 
   const submit = handleSubmit(async (v) => {
-    await onSave({ ...v, roomId: v.roomId || null }, editing?.id);
+    await onSave({ ...v, customType: v.type === 'other' ? v.customType : '', roomId: v.roomId || null }, editing?.id);
   });
 
   return (
@@ -125,6 +127,23 @@ export function SessionDialog({ open, onClose, event, rooms, speakers, sessions,
             ))}
           </Select>
         </FormField>
+        {draft.type === 'other' ? (
+          <FormField label="Your session type" htmlFor="s-custom-type" error={errors.customType?.message}>
+            <Input
+              id="s-custom-type"
+              aria-invalid={!!errors.customType}
+              {...register('customType')}
+              placeholder="e.g. Registration, Attendance, Lunch"
+              list="s-custom-type-ideas"
+              autoFocus
+            />
+            <datalist id="s-custom-type-ideas">
+              {['Registration', 'Attendance', 'Lunch', 'Tea break', 'Campus tour', 'Ice-breaker', 'Cultural performance', 'Prize distribution'].map((x) => (
+                <option key={x} value={x} />
+              ))}
+            </datalist>
+          </FormField>
+        ) : null}
         <FormField label="Day" htmlFor="s-day" error={errors.day?.message}>
           <Select id="s-day" {...register('day')}>
             {days.map((d, i) => (

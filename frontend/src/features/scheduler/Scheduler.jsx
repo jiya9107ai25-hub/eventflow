@@ -5,7 +5,7 @@ import { Badge, Button, ConfirmDialog, EmptyState, Skeleton } from '@/components
 import { useWorkspace, useWorkspaceEvent } from '@/features/workspace/WorkspaceContext';
 import { useToast } from '@/context/ToastContext';
 import { conflictIndex, detectConflicts } from '@/lib/conflicts';
-import { SESSION_TYPE_META } from '@/lib/constants';
+import { SESSION_TYPE_META, sessionTypeLabel } from '@/lib/constants';
 import { eventDays, formatTime, prettyDate } from '@/lib/time';
 import { cn } from '@/lib/utils';
 import { SessionDialog } from './SessionDialog';
@@ -292,7 +292,7 @@ function AgendaList({ sessions: list, conflictsById: cmap, onEdit, rooms, speake
                       <AlertTriangle className="h-3 w-3" /> Conflict
                     </Badge>
                   )}
-                  <Badge tone="muted">{SESSION_TYPE_META[s.type].label}</Badge>
+                  <Badge tone="muted">{sessionTypeLabel(s)}</Badge>
                 </div>
               </div>
               <p className="mt-1 text-sm text-muted-foreground">
