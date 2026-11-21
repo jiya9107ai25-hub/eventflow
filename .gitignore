@@ -1,0 +1,12 @@
+node_modules
+dist
+coverage
+*.log
+.DS_Store
+.netlify
+
+# secrets — never commit
+.env
+.env.*
+backend/serviceAccountKey.json
+backend/data/

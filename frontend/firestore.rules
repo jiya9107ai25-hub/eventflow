@@ -1,0 +1,144 @@
+rules_version = '2';
+
+// EventFlow security rules — role-based access
+//
+//   Admin      = the person who created the event (events.ownerId). Full control.
+//   Organizer  = someone the admin invited by email (events.memberIds). Can edit the plan.
+//   Viewer     = any signed-in user who entered the event password. Can only READ the plan
+//                (schedule, rooms, speakers, resources, tasks) — never attendees, team, chat or emails.
+//   Everyone   = any signed-in user can see the public summary in /eventDirectory (title, dates, venue).
+//
+// The event password lives in /eventAccess/{eventId}, readable only by the admin. A viewer joins by
+// creating /events/{eventId}/viewers/{uid} containing the password; the rule below compares it with
+// the admin's password, so a wrong password is rejected by the server, not just the app.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function uid() { return request.auth.uid; }
+    function eventPath(eventId) { return /databases/$(database)/documents/events/$(eventId); }
+    function eventData(eventId) { return get(eventPath(eventId)).data; }
+    function isMember(eventId) { return signedIn() && exists(eventPath(eventId)) && uid() in eventData(eventId).memberIds; }
+    function isOwner(eventId) { return signedIn() && exists(eventPath(eventId)) && eventData(eventId).ownerId == uid(); }
+    function isViewer(eventId) {
+      return signedIn() && exists(/databases/$(database)/documents/events/$(eventId)/viewers/$(uid()));
+    }
+
+    match /users/{userId} {
+      allow read, write: if signedIn() && uid() == userId;
+
+      match /activity/{activityId} {
+        allow read, create: if signedIn() && uid() == userId;
+        allow update, delete: if false;
+      }
+
+      // Bookmarks of events this user unlocked with a password (only for listing them).
+      match /viewing/{eventId} {
+        allow read, write: if signedIn() && uid() == userId;
+      }
+    }
+
+    // Public summary shown in "All events".
+    match /eventDirectory/{eventId} {
+      allow read: if signedIn();
+      allow create: if isMember(eventId);
+      // Organizers keep the summary in sync; only the admin can change ownership / password flag.
+      allow update: if isMember(eventId)
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['ownerId', 'hasPassword']) || isOwner(eventId));
+      allow delete: if isOwner(eventId);
+    }
+
+    // The event password — admin only.
+    match /eventAccess/{eventId} {
+      allow read, write: if isOwner(eventId);
+    }
+
+    match /events/{eventId} {
+      function isEventMember() { return signedIn() && uid() in resource.data.memberIds; }
+      function isEventAdmin() { return signedIn() && resource.data.ownerId == uid(); }
+      function isInvitee() {
+        return signedIn() && request.auth.token.email != null
+          && request.auth.token.email.lower() in resource.data.invites;
+      }
+      function changed() { return request.resource.data.diff(resource.data).affectedKeys(); }
+      function validDates() { return request.resource.data.endDate >= request.resource.data.startDate; }
+
+      // Members, invitees (so they can accept) and password viewers can read the event.
+      allow read: if isEventMember() || isInvitee() || isViewer(eventId);
+
+      allow create: if signedIn()
+        && request.resource.data.ownerId == uid()
+        && request.resource.data.memberIds == [uid()]
+        && request.resource.data.title is string
+        && request.resource.data.title.size() >= 3
+        && request.resource.data.title.size() <= 80
+        && validDates();
+
+      // 1. Any organizer can edit event details (not ownership, membership or invites).
+      allow update: if isEventMember()
+        && !changed().hasAny(['ownerId', 'memberIds', 'invites'])
+        && validDates();
+
+      // 2. The admin manages access: invite/revoke, remove organizers, transfer admin.
+      allow update: if isEventAdmin()
+        && request.resource.data.ownerId in request.resource.data.memberIds
+        && (request.resource.data.ownerId == uid() || request.resource.data.ownerId in resource.data.memberIds)
+        && validDates();
+
+      // 3. An invitee accepts: adds only their own uid and removes only their own invite.
+      allow update: if isInvitee()
+        && changed().hasOnly(['memberIds', 'invites', 'members', 'updatedAt'])
+        && request.resource.data.memberIds.toSet() == resource.data.memberIds.toSet().union([uid()].toSet())
+        && request.resource.data.invites.toSet() == resource.data.invites.toSet().difference([request.auth.token.email.lower()].toSet());
+
+      // 4. An organizer (not the admin) can leave.
+      allow update: if isEventMember() && !isEventAdmin()
+        && changed().hasOnly(['memberIds', 'members', 'updatedAt'])
+        && request.resource.data.memberIds.toSet() == resource.data.memberIds.toSet().difference([uid()].toSet());
+
+      allow delete: if isEventAdmin();
+
+      // View-only access with the event password.
+      match /viewers/{viewerId} {
+        allow create: if signedIn() && viewerId == uid()
+          && request.resource.data.uid == uid()
+          && request.resource.data.password is string
+          && exists(/databases/$(database)/documents/eventAccess/$(eventId))
+          && request.resource.data.password == get(/databases/$(database)/documents/eventAccess/$(eventId)).data.password;
+        allow read: if signedIn() && (viewerId == uid() || isMember(eventId));
+        allow delete: if signedIn() && (viewerId == uid() || isOwner(eventId));
+        allow update: if false;
+      }
+
+      match /messages/{messageId} {
+        allow read: if isMember(eventId);
+        allow create: if isMember(eventId)
+          && request.resource.data.authorId == uid()
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 2000
+          && (request.resource.data.isAnnouncement == false || isOwner(eventId));
+        allow update: if false;
+        allow delete: if isMember(eventId) && (resource.data.authorId == uid() || isOwner(eventId));
+      }
+
+      match /resources/{resourceId} {
+        allow read: if isMember(eventId) || isViewer(eventId);
+        allow delete: if isMember(eventId);
+        allow create, update: if isMember(eventId)
+          && request.resource.data.required is int
+          && request.resource.data.allocated is int
+          && request.resource.data.allocated >= 0
+          && request.resource.data.allocated <= request.resource.data.required;
+      }
+
+      match /{sub}/{docId} {
+        // The plan: organizers edit, password viewers can read.
+        allow read: if sub in ['rooms', 'speakers', 'sessions', 'tasks', 'allocations'] && (isMember(eventId) || isViewer(eventId));
+        allow write: if sub in ['rooms', 'speakers', 'sessions', 'tasks', 'allocations'] && isMember(eventId);
+        // Private to organizers: attendee details, team directory, email history.
+        allow read, write: if sub in ['attendees', 'team', 'notifications'] && isMember(eventId);
+      }
+    }
+  }
+}

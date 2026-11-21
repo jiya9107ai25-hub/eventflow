@@ -1,0 +1,86 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * EventFlow design tokens.
+ * Primary: Indigo 600 — trustworthy, product-like. Accent: Sky 500 — energy for highlights.
+ * Neutrals: cool slate. Semantic: emerald (success), amber (warning), rose (danger).
+ */
+@layer base {
+  :root {
+    --background: 220 33% 98%;
+    --foreground: 224 32% 12%;
+    --surface: 0 0% 100%;
+    --card: 0 0% 100%;
+    --card-foreground: 224 32% 12%;
+    --primary: 243 75% 59%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 20% 94%;
+    --secondary-foreground: 224 32% 16%;
+    --muted: 220 20% 95%;
+    --muted-foreground: 220 10% 44%;
+    --accent: 199 89% 48%;
+    --accent-foreground: 0 0% 100%;
+    --success: 158 64% 40%;
+    --warning: 35 92% 50%;
+    --danger: 350 80% 56%;
+    --border: 220 16% 89%;
+    --input: 220 16% 86%;
+    --ring: 243 75% 59%;
+    --shadow: 224 40% 20%;
+  }
+
+  .dark {
+    --background: 226 36% 7%;
+    --foreground: 220 20% 94%;
+    --surface: 226 30% 10%;
+    --card: 226 30% 11%;
+    --card-foreground: 220 20% 94%;
+    --primary: 239 84% 67%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 226 22% 17%;
+    --secondary-foreground: 220 20% 92%;
+    --muted: 226 22% 15%;
+    --muted-foreground: 220 12% 64%;
+    --accent: 199 89% 58%;
+    --success: 158 60% 48%;
+    --warning: 38 92% 56%;
+    --danger: 350 85% 64%;
+    --border: 226 20% 19%;
+    --input: 226 20% 23%;
+    --ring: 239 84% 67%;
+    --shadow: 226 60% 2%;
+  }
+
+  * { @apply border-border; }
+  html { scroll-behavior: smooth; }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: 'cv11', 'ss01';
+  }
+  h1, h2, h3, h4 { @apply font-display tracking-tight; }
+  :focus-visible { @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background; }
+  ::selection { background: hsl(var(--primary) / 0.25); }
+}
+
+@layer components {
+  .glass {
+    @apply bg-surface/70 backdrop-blur-xl;
+  }
+  .text-gradient {
+    @apply bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent;
+  }
+  .grid-bg {
+    background-image:
+      linear-gradient(hsl(var(--border) / 0.6) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(var(--border) / 0.6) 1px, transparent 1px);
+    background-size: 44px 44px;
+  }
+  .scrollbar-thin { scrollbar-width: thin; scrollbar-color: hsl(var(--border)) transparent; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
