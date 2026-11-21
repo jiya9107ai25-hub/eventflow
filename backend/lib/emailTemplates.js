@@ -11,7 +11,6 @@ function layout({ preheader, heading, body, cta }) {
 <tr><td style="padding:28px">
 <h1 style="margin:0 0 12px;font-size:20px">${esc(heading)}</h1>
 ${body}
-${cta ? `<p style="margin:24px 0 0"><a href="${esc(cta.href)}" style="background:#4f46e5;color:#fff;text-decoration:none;padding:12px 20px;border-radius:10px;font-weight:600;display:inline-block">${esc(cta.label)}</a></p>` : ''}
 </td></tr>
 <tr><td style="padding:16px 28px;background:#f8f9fc;color:#6b7280;font-size:12px">Sent by EventFlow on behalf of the event organizers.</td></tr>
 </table></td></tr></table></body></html>`;
